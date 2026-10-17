@@ -15,6 +15,9 @@ sudo apt-get install -y -qq live-build git cdebootstrap debootstrap > /dev/null
 echo "=== Cleaning any previous build ==="
 sudo lb clean --purge 2>/dev/null || true
 
+echo "=== Applying HAVEN live-build configuration (auto/config) ==="
+./auto/config
+
 echo "=== Building HAVEN ISO (this takes 30-60 minutes) ==="
 echo "Build started: $(date -u)"
 sudo lb build 2>&1 | tee "$HOME/iso-build.log"
