@@ -4,6 +4,10 @@
 set -e
 cd "$(dirname "$0")/live-build"
 
+echo "=== Fixing executable bits (not always preserved by git push) ==="
+chmod +x auto/config
+chmod +x config/hooks/live/*.hook.chroot 2>/dev/null || true
+
 echo "=== Installing live-build dependencies ==="
 sudo apt-get update -qq
 sudo apt-get install -y -qq live-build git cdebootstrap debootstrap > /dev/null
