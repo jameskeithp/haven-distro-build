@@ -16,6 +16,11 @@ lb config \
   --mode debian \
   --distribution bookworm \
   --archive-areas "main contrib non-free non-free-firmware" \
+  --parent-mirror-bootstrap http://deb.debian.org/debian/ \
+  --parent-mirror-chroot http://deb.debian.org/debian/ \
+  --parent-mirror-chroot-security http://security.debian.org/ \
+  --parent-mirror-binary http://deb.debian.org/debian/ \
+  --parent-mirror-binary-security http://security.debian.org/ \
   --mirror-bootstrap http://deb.debian.org/debian/ \
   --mirror-chroot http://deb.debian.org/debian/ \
   --mirror-chroot-security http://security.debian.org/ \
