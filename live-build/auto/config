@@ -1,22 +1,24 @@
 #!/bin/sh
 set -e
 # HAVEN live-build configuration wrapper.
-# Run from build/live-build/ :  sudo ./auto/config
+# Run from the live-build dir:  ./auto/config
 # Then:  sudo lb build 2>&1 | tee build.log
 # Source: Phase 3, Step 2 of FLAGSHIP-LINUX-DISTRO-BUILD-GUIDE.md.
-# NOTE: not yet executed (host disk too small for a build as of 2026-10-17).
+#
+# NOTE (2026-10-17): flags below target live-build 3.0.x as shipped by
+# Ubuntu 24.04. The 4.x (Debian fork) names differ: --bootloaders (plural,
+# with grub-efi), --image-name, --updates. On 3.0.x --bootloader takes a
+# single value (grub|syslinux|yaboot); UEFI boot is a follow-up item.
 
 lb config \
   --distribution bookworm \
   --archive-areas "main contrib non-free non-free-firmware" \
   --debian-installer live \
-  --bootloaders "syslinux,grub-efi" \
+  --bootloader syslinux \
   --iso-application "HAVEN" \
   --iso-publisher "Black Haven LLC" \
   --iso-volume "HAVEN_2026" \
-  --image-name "haven-bookworm-amd64" \
   --security true \
-  --updates true \
   --backports false \
   --firmware-binary true \
   --firmware-chroot true
