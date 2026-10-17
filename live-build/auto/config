@@ -13,6 +13,7 @@ set -e
 # single value (grub|syslinux|yaboot); UEFI boot is a follow-up item.
 
 lb config \
+  --mode debian \
   --distribution bookworm \
   --archive-areas "main contrib non-free non-free-firmware" \
   --mirror-bootstrap http://deb.debian.org/debian/ \

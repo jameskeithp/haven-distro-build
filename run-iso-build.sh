@@ -22,6 +22,7 @@ echo "=== Applying HAVEN live-build configuration ==="
 # Flags inlined (not via ./auto/config) to avoid the auto-execution
 # recursion described above. Must match live-build/auto/config.
 lb config \
+  --mode debian \
   --distribution bookworm \
   --archive-areas "main contrib non-free non-free-firmware" \
   --mirror-bootstrap http://deb.debian.org/debian/ \
