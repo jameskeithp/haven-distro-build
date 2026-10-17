@@ -1,8 +1,10 @@
 #!/bin/sh
 set -e
 # HAVEN live-build configuration wrapper.
-# Run from the live-build dir:  ./auto/config
-# Then:  sudo lb build 2>&1 | tee build.log
+# REFERENCE ONLY - do NOT execute directly and do NOT make executable:
+# live-build 3.0.x re-executes an executable auto/config from inside
+# lb config, causing infinite recursion. run-iso-build.sh inlines these
+# same flags into a direct lb config call. Keep the two in sync.
 # Source: Phase 3, Step 2 of FLAGSHIP-LINUX-DISTRO-BUILD-GUIDE.md.
 #
 # NOTE (2026-10-17): flags below target live-build 3.0.x as shipped by
