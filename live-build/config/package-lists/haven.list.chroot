@@ -1,0 +1,47 @@
+# HAVEN package list for the live chroot (Debian bookworm).
+# One package per line. Verified present in Debian bookworm unless noted.
+# Packages NOT in Debian (wazuh-agent, AWS CLI v2, OpenTofu, k3s, Burp Suite,
+# BloodHound, Metasploit) are installed via config/archives/*.list.chroot
+# third-party repos or by hook scripts, never listed here.
+
+# --- Desktop (XFCE default) ---
+task-xfce-desktop
+lightdm
+
+# --- Infrastructure and cloud automation ---
+ansible
+podman
+python3-pipx
+python3-boto3
+
+# --- Blue team / defensive ---
+suricata
+zeek
+tshark
+auditd
+clamav
+clamav-daemon
+openscap-scanner
+ssg-debian
+
+# --- Red team / auditing (Debian-packaged subset only) ---
+nmap
+hydra
+nikto
+sqlmap
+gobuster
+hashcat
+
+# --- Utilities the layers depend on ---
+curl
+ca-certificates
+git
+vim
+tmux
+htop
+net-tools
+dnsutils
+jq
+python3-venv
+chrony
+nftables

@@ -1,0 +1,59 @@
+#!/bin/bash
+# haven-healthcheck: verify the lab environment is sane. Exit 0 if all green.
+# Source: Phase 2, Layer 4 of FLAGSHIP-LINUX-DISTRO-BUILD-GUIDE.md.
+# Dependency-free by design: bash + coreutils + systemctl only.
+# NOTE: logic reviewed, not yet executed on a built ISO (no build run as of 2026-10-17).
+FAIL=0
+
+pass() { echo "PASS: $1"; }
+fail() { echo "FAIL: $1"; FAIL=1; }
+
+# 1. Network: default route, DNS, outbound HTTPS
+if ip route show default | grep -q .; then pass "default route present"; else fail "no default route"; fi
+if getent hosts deb.debian.org >/dev/null 2>&1; then pass "DNS resolves"; else fail "DNS does not resolve"; fi
+
+# 2. Time: chrony synchronized (TLS and Kerberos both hate clock skew)
+if command -v chronyc >/dev/null 2>&1 && chronyc tracking >/dev/null 2>&1; then
+  pass "chrony tracking OK"
+else
+  fail "chrony not synchronized (or not installed)"
+fi
+
+# 3. Disk: root filesystem under 85 percent
+USEPCT=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
+if [ "$USEPCT" -lt 85 ]; then pass "root disk ${USEPCT}% used"; else fail "root disk ${USEPCT}% used (>=85%)"; fi
+
+# 4. Services: suricata, wazuh-agent, auditd, docker active (best effort; absent is INFO, not FAIL, on live ISO)
+for svc in suricata wazuh-agent auditd docker; do
+  if systemctl is-active --quiet "$svc" 2>/dev/null; then
+    pass "service active: $svc"
+  else
+    echo "INFO: service not active (may be expected): $svc"
+  fi
+done
+
+# 5. Updates: warn if security updates are pending (informational)
+if apt-get -s upgrade 2>/dev/null | grep -q "^Inst.*security"; then
+  echo "INFO: security updates pending; run sec-update"
+else
+  pass "no pending security updates detected"
+fi
+
+# 6. Labs: /opt/haven/labs present
+if [ -d /opt/haven/labs ]; then pass "/opt/haven/labs present"; else fail "/opt/haven/labs missing"; fi
+
+# 7. Cloud (AMI only): IMDS reachable, SSM agent registered
+if curl -fsS -m 3 http://169.254.169.254/latest/meta-data/instance-id >/dev/null 2>&1; then
+  pass "IMDS reachable (cloud environment)"
+  if systemctl is-active --quiet amazon-ssm-agent 2>/dev/null; then
+    pass "SSM agent registered"
+  else
+    echo "INFO: IMDS reachable but SSM agent not active"
+  fi
+else
+  echo "INFO: no IMDS; assuming bare-metal/VM/lab (not an AMI boot)"
+fi
+
+echo "----------------------------------------"
+if [ "$FAIL" -eq 0 ]; then echo "haven-healthcheck: ALL GREEN"; else echo "haven-healthcheck: FAILURES PRESENT"; fi
+exit "$FAIL"

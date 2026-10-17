@@ -1,0 +1,7 @@
+# Wazuh Tier 2 APT repository (not in Debian; installed via third-party archive).
+# UNTESTED: verify the keyring steps against current Wazuh docs at build time.
+# The matching key file config/archives/wazuh.key.chroot must contain the
+# Wazuh GPG key (binary or armored). Fetch it at build time with:
+#   curl -fsSL https://packages.wazuh.com/key/GPG-KEY-WAZUH -o config/archives/wazuh.key.chroot
+# Do NOT commit the key without verifying its fingerprint out of band.
+deb https://packages.wazuh.com/4.x/apt/ stable main

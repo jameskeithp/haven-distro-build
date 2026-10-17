@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+# HAVEN live-build configuration wrapper.
+# Run from build/live-build/ :  sudo ./auto/config
+# Then:  sudo lb build 2>&1 | tee build.log
+# Source: Phase 3, Step 2 of FLAGSHIP-LINUX-DISTRO-BUILD-GUIDE.md.
+# NOTE: not yet executed (host disk too small for a build as of 2026-10-17).
+
+lb config \
+  --distribution bookworm \
+  --archive-areas "main contrib non-free non-free-firmware" \
+  --debian-installer live \
+  --bootloaders "syslinux,grub-efi" \
+  --iso-application "HAVEN" \
+  --iso-publisher "Black Haven LLC" \
+  --iso-volume "HAVEN_2026" \
+  --image-name "haven-bookworm-amd64" \
+  --security true \
+  --updates true \
+  --backports false \
+  --firmware-binary true \
+  --firmware-chroot true

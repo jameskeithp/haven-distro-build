@@ -1,0 +1,12 @@
+# HAVEN hardening playbook. Applied by the Packer AMI template.
+# Mirrors the live-build chroot hook controls in Ansible form.
+# Run: ansible-playbook -i <inventory> haven-harden.yml (become: true is set here)
+# NOT executed in this environment.
+
+- name: Harden HAVEN base image (CIS-aligned)
+  hosts: all
+  become: true
+  vars:
+    haven_version: "2026.10"
+  roles:
+    - role: hardening

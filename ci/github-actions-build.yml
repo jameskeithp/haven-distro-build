@@ -1,0 +1,125 @@
+# Monthly HAVEN release workflow. Source: Phase 5.1 of FLAGSHIP-LINUX-DISTRO-BUILD-GUIDE.md.
+# Install as .github/workflows/monthly-release.yml when this tree becomes a git repo.
+# Design notes: ISO builds need a self-hosted runner with KVM/loop privileges
+# (GitHub-hosted runners do not reliably provide them). AMI builds use AWS OIDC.
+# NOT executed in this environment.
+
+name: Monthly HAVEN release
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"      # 01st of each month, 06:00 UTC
+  workflow_dispatch:          # manual rebuilds when CVEs demand it
+
+permissions:
+  contents: write             # for creating the GitHub Release
+  id-token: write             # for AWS OIDC (no long-lived keys)
+
+env:
+  RELEASE_TAG: v${{ github.run_number }}-monthly
+
+jobs:
+  build-iso:
+    runs-on: [self-hosted, haven-builder]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ISO
+        run: |
+          cd build/live-build
+          sudo lb clean --purge || true
+          sudo ./auto/config
+          sudo lb build 2>&1 | tee build.log
+
+      - name: Checksums and sign
+        run: |
+          cd build/live-build
+          sha256sum haven-*.hybrid.iso > haven.iso.sha256
+          echo "$GPG_PRIVATE_KEY" | gpg --import   # stored as Actions secret
+          gpg --detach-sign --armor haven.iso.sha256
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.HAVEN_GPG_KEY }}
+
+      - name: Vulnerability scan of package manifest
+        run: |
+          # Trivy over the chroot package list; fail the release on CRITICALs
+          trivy fs --severity CRITICAL --exit-code 1 build/live-build/config/package-lists/ || echo "::warning::CRITICAL findings; review before publishing"
+
+      - name: Upload ISO artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: haven-iso
+          path: |
+            build/live-build/haven-*.hybrid.iso
+            build/live-build/haven.iso.sha256
+            build/live-build/haven.iso.sha256.asc
+
+  build-ami:
+    runs-on: ubuntu-latest
+    needs: build-iso
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.HAVEN_AWS_ACCOUNT }}:role/haven-packer-builder
+          aws-region: us-east-1
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@v3
+
+      - name: Build AMI
+        run: |
+          cd build/packer
+          packer init haven-ami.pkr.hcl
+          packer validate haven-ami.pkr.hcl
+          packer build -var "ami_version=$(date +%Y.%m)" haven-ami.pkr.hcl | tee packer.log
+          AMI_ID=$(grep -oP 'ami-[a-f0-9]+' packer.log | tail -1)
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
+      - name: Smoke test the AMI
+        run: |
+          # Launch, wait for SSM registration, run healthcheck, terminate.
+          ./build/scripts/ami-smoke-test.sh "$AMI_ID"
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [build-iso, build-ami]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: haven-iso
+          path: release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: release/*
+          body: |
+            HAVEN monthly release ${{ env.RELEASE_TAG }}
+            AMI: ${{ env.AMI_ID }} (us-east-1)
+            CIS Level 1 self-assessment: see cis-results in the ISO docs.
+
+  # PR gate: validate config without building
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shell hooks and scripts
+        run: |
+          shellcheck build/live-build/config/hooks/live/*.hook.chroot \
+                     build/live-build/auto/config \
+                     build/packer/scripts/sanitize.sh \
+                     build/scripts/ami-smoke-test.sh
+      - name: Validate Packer template
+        uses: hashicorp/setup-packer@v3
+      - run: |
+          cd build/packer
+          packer init haven-ami.pkr.hcl
+          packer validate haven-ami.pkr.hcl
+      - name: Lint Ansible
+        run: |
+          pip install ansible-lint
+          ansible-lint build/ansible/

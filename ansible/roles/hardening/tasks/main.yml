@@ -1,0 +1,109 @@
+# HAVEN hardening role. Source of truth for CIS-aligned controls.
+# The live-build hook 0100-haven-hardening.hook.chroot implements the same
+# controls in shell; keep the two in sync (role changes first).
+# NOT executed in this environment.
+
+- name: Deploy kernel sysctl hardening
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-haven.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      net.ipv4.ip_forward=0
+      net.ipv4.conf.all.send_redirects=0
+      net.ipv4.conf.default.send_redirects=0
+      net.ipv4.conf.all.accept_source_route=0
+      net.ipv4.conf.default.accept_source_route=0
+      net.ipv4.conf.all.accept_redirects=0
+      net.ipv4.conf.default.accept_redirects=0
+      net.ipv4.conf.all.secure_redirects=0
+      net.ipv4.conf.all.log_martians=1
+      net.ipv4.icmp_echo_ignore_broadcasts=1
+      net.ipv4.tcp_syncookies=1
+      kernel.randomize_va_space=2
+      kernel.kptr_restrict=2
+      kernel.dmesg_restrict=1
+      fs.suid_dumpable=0
+  notify: Reload sysctl
+
+- name: Disable uncommon filesystems (CIS 1.1.x)
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/haven-cis.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for fs in ['cramfs', 'freevxfs', 'jffs2', 'hfs', 'hfsplus', 'squashfs', 'udf'] %}
+      install {{ fs }} /bin/true
+      {% endfor %}
+
+- name: SSH hardening drop-in (CIS 5.2.x)
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-haven.conf
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      PermitRootLogin no
+      PermitEmptyPasswords no
+      MaxAuthTries 4
+      LoginGraceTime 60
+  notify: Restart sshd
+
+- name: Password aging and umask policy (CIS 5.3.x / 5.4.x)
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^#?PASS_MAX_DAYS', line: 'PASS_MAX_DAYS   90' }
+    - { regexp: '^#?PASS_MIN_DAYS', line: 'PASS_MIN_DAYS   7' }
+    - { regexp: '^#?UMASK',         line: 'UMASK           027' }
+
+- name: Deploy CIS-aligned auditd ruleset
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/haven-cis.rules
+    owner: root
+    group: root
+    mode: "0640"
+    content: |
+      -w /etc/passwd -p wa -k identity
+      -w /etc/group -p wa -k identity
+      -w /etc/shadow -p wa -k identity
+      -w /etc/sudoers -p wa -k privilege-escalation
+      -w /etc/sudoers.d/ -p wa -k privilege-escalation
+      -w /var/log/sudo.log -p wa -k privilege-escalation
+      -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change
+      -a always,exit -F arch=b64 -S creat -S open -S openat -F exit=-EACCES -k access
+      -a always,exit -F arch=b64 -S creat -S open -S openat -F exit=-EPERM -k access
+      -w /sbin/insmod -p x -k modules
+      -w /sbin/rmmod -p x -k modules
+      -w /sbin/modprobe -p x -k modules
+      -e 2
+  notify: Restart auditd
+
+- name: Remove risky legacy packages (CIS)
+  ansible.builtin.apt:
+    name: ['nis', 'rsh-client', 'rsh-redone-client', 'talk', 'telnet']
+    state: absent
+    purge: true
+  failed_when: false
+
+- name: Deploy MOTD authorized-use banner
+  ansible.builtin.copy:
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      HAVEN Linux - authorized use only. All activity may be monitored.
+      Run 'haven-healthcheck' to verify your environment. Run 'cis-scan' for a CIS self-assessment.
+
+- name: Enable layer dependency services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: ['suricata', 'auditd', 'clamav-freshclam']
+  failed_when: false

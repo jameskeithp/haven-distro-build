@@ -1,0 +1,7 @@
+# Default variables for the HAVEN hardening role.
+haven_version: "2026.10"
+haven_ssh_max_auth_tries: 4
+haven_ssh_login_grace_time: 60
+haven_pass_max_days: 90
+haven_pass_min_days: 7
+haven_umask: "027"
