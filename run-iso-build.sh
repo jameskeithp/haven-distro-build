@@ -17,6 +17,16 @@ sudo apt-get install -y -qq live-build git cdebootstrap debootstrap > /dev/null
 
 echo "=== Cleaning any previous build ==="
 sudo lb clean --purge 2>/dev/null || true
+# Remove GENERATED config files (common/bootstrap/chroot/binary/source).
+# lb config re-sources these when they exist, so a stale value written by an
+# earlier run survives lb clean and overrides today's flags. Root cause of
+# the 2026-10-17 job 52595 failure: an early ubuntu-mode lb config run wrote
+# LB_KEYRING_PACKAGES="ubuntu-keyring" into config/chroot; every later
+# debian-mode run re-sourced it, and lb chroot_archives then tried to
+# install ubuntu-keyring from the Debian archive and died.
+# Only the generated files are removed; the repo's config subdirectories
+# (archives, hooks, includes.chroot, package-lists) are kept.
+rm -f config/common config/bootstrap config/chroot config/binary config/source
 
 echo "=== Applying HAVEN live-build configuration ==="
 # Flags inlined (not via ./auto/config) to avoid the auto-execution
@@ -49,7 +59,8 @@ lb config \
   --security false \
   --backports false \
   --firmware-binary true \
-  --firmware-chroot true
+  --firmware-chroot true \
+  --keyring-packages debian-archive-keyring
 
 echo "=== Building HAVEN ISO (this takes 30-60 minutes) ==="
 echo "Build started: $(date -u)"
