@@ -32,6 +32,15 @@ sqlmap
 gobuster
 hashcat
 
+# --- Firmware (explicit, not auto-discovered) ---
+# live-build 3.0~a57 auto-discovers firmware by downloading
+# dists/bookworm/Contents-amd64.gz, which Debian does not publish
+# (per-component only) -> 404 kills the build. So firmware is named
+# explicitly here; firmware-linux pulls firmware-linux-free/nonfree.
+firmware-linux
+intel-microcode
+amd64-microcode
+
 # --- Utilities the layers depend on ---
 curl
 ca-certificates

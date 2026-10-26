@@ -58,9 +58,16 @@ lb config \
   --iso-volume "HAVEN_2026" \
   --security false \
   --backports false \
-  --firmware-binary true \
-  --firmware-chroot true \
+  --firmware-binary false \
+  --firmware-chroot false \
   --keyring-packages debian-archive-keyring
+# NOTE (2026-10-26): firmware flags are FALSE because live-build 3.0~a57's
+# firmware stages (lb_chroot_linux-image, lb_binary_debian-installer)
+# download dists/bookworm/Contents-amd64.gz to enumerate firmware packages,
+# and Debian publishes Contents files per-component only (main/Contents-*),
+# never at suite level -> 404 kills the build (job 52595, second failure).
+# Firmware is named explicitly in config/package-lists/haven.list.chroot
+# instead of auto-discovered.
 
 echo "=== Building HAVEN ISO (this takes 30-60 minutes) ==="
 echo "Build started: $(date -u)"

@@ -39,5 +39,10 @@ lb config \
   --iso-volume "HAVEN_2026" \
   --security false \
   --backports false \
-  --firmware-binary true \
-  --firmware-chroot true
+  --firmware-binary false \
+  --firmware-chroot false
+# NOTE (2026-10-26): firmware flags are FALSE because live-build 3.0~a57's
+# firmware stages download dists/bookworm/Contents-amd64.gz to enumerate
+# firmware packages, and Debian publishes Contents files per-component only
+# (main/Contents-*), never at suite level -> 404 kills the build.
+# Firmware is named explicitly in config/package-lists/haven.list.chroot.
