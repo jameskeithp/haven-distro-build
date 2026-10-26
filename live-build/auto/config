@@ -32,6 +32,10 @@ lb config \
   --mirror-chroot-volatile http://deb.debian.org/debian/ \
   --mirror-binary-volatile http://deb.debian.org/debian/ \
   --mirror-debian-installer http://deb.debian.org/debian/ \
+  --parent-mirror-chroot-backports http://deb.debian.org/debian/ \
+  --parent-mirror-binary-backports http://deb.debian.org/debian/ \
+  --mirror-chroot-backports http://deb.debian.org/debian/ \
+  --mirror-binary-backports http://deb.debian.org/debian/ \
   --debian-installer live \
   --bootloader syslinux \
   --iso-application "HAVEN" \
@@ -45,6 +49,12 @@ lb config \
 # it comes from bookworm-backports (7.0.10). zeek and python3-pipx are in
 # neither bookworm nor backports, so they were removed from the package
 # list (zeek needs its vendor apt repo; pipx needs a pip install hook).
+# NOTE (2026-10-26): backports mirrors point at plain-HTTP deb.debian.org,
+# not backports.debian.org: that host redirects HTTP to HTTPS, and the
+# chroot has no CA certificates yet when apt runs, so the TLS handshake
+# fails and the backports index never downloads (suricata then has no
+# installation candidate). deb.debian.org serves the same
+# bookworm-backports suite over plain HTTP.
 # NOTE (2026-10-26): firmware flags are FALSE because live-build 3.0~a57's
 # firmware stages download dists/bookworm/Contents-amd64.gz to enumerate
 # firmware packages, and Debian publishes Contents files per-component only
