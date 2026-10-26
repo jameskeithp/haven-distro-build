@@ -55,7 +55,7 @@ lb config \
   --parent-mirror-binary-backports http://deb.debian.org/debian/ \
   --mirror-chroot-backports http://deb.debian.org/debian/ \
   --mirror-binary-backports http://deb.debian.org/debian/ \
-  --debian-installer live \
+  --debian-installer false \
   --bootloader syslinux \
   --iso-application "HAVEN" \
   --iso-publisher "Black Haven LLC" \
@@ -82,6 +82,14 @@ lb config \
 # never at suite level -> 404 kills the build (job 52595, second failure).
 # Firmware is named explicitly in config/package-lists/haven.list.chroot
 # instead of auto-discovered.
+# NOTE (2026-10-26): --debian-installer is FALSE because live-build 3.0~a57's
+# lb_binary_debian-installer hardcodes packages that no longer exist in
+# bookworm for amd64/debian mode: "lilo grub grub-pc" plus
+# "linux-image-2.6-amd64" (2.6-era kernel name). apt fails on both and the
+# stage aborts the build (attempt 8, after the squashfs was built). There
+# is no config knob for those names; they live in live-build's own script.
+# The ISO is therefore live-only with no Debian installer option. Revisit
+# only with a newer live-build or a separately built installer.
 
 echo "=== Building HAVEN ISO (this takes 30-60 minutes) ==="
 echo "Build started: $(date -u)"
