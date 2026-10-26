@@ -11,12 +11,13 @@ lightdm
 # --- Infrastructure and cloud automation ---
 ansible
 podman
-python3-pipx
 python3-boto3
 
 # --- Blue team / defensive ---
+# suricata is NOT in bookworm; it comes from bookworm-backports (7.0.10),
+# enabled by --backports true in the lb config. zeek is not in Debian at
+# all (needs the Zeek vendor apt repo, follow-up) and is removed here.
 suricata
-zeek
 tshark
 auditd
 clamav

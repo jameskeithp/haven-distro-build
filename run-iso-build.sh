@@ -57,10 +57,14 @@ lb config \
   --iso-publisher "Black Haven LLC" \
   --iso-volume "HAVEN_2026" \
   --security false \
-  --backports false \
+  --backports true \
   --firmware-binary false \
   --firmware-chroot false \
   --keyring-packages debian-archive-keyring
+# NOTE (2026-10-26): backports is TRUE because suricata is not in bookworm;
+# it comes from bookworm-backports (7.0.10). zeek and python3-pipx are in
+# neither bookworm nor backports, so they were removed from the package
+# list (zeek needs its vendor apt repo; pipx needs a pip install hook).
 # NOTE (2026-10-26): firmware flags are FALSE because live-build 3.0~a57's
 # firmware stages (lb_chroot_linux-image, lb_binary_debian-installer)
 # download dists/bookworm/Contents-amd64.gz to enumerate firmware packages,
