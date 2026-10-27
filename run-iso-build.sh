@@ -91,6 +91,26 @@ lb config \
 # The ISO is therefore live-only with no Debian installer option. Revisit
 # only with a newer live-build or a separately built installer.
 
+echo "=== Patching Ubuntu live-build gfxboot assumption (debian mode) ==="
+# NOTE (2026-10-27): Ubuntu's live-build (3.0~a57 + Ubuntu patches) ends
+# lb_binary_syslinux with a gfxboot "bootlogo" repack block that runs
+# unconditionally: (cd "$tmpdir" && cpio -i) < ${_TARGET}/bootlogo.
+# The bootlogo file is only ever created for ubuntu-mode gfxboot themes
+# (extracted from gfxboot-theme-ubuntu near the top of the same script);
+# debian-mode builds never create one, so the input redirect fails and
+# the stage dies AFTER the splash conversion (attempt 12, 2026-10-27).
+# Guard the extraction on the file existing; the repack line then writes
+# a harmless empty bootlogo and the stage completes. The patch touches
+# only the build host's script, is idempotent, and is reverted by
+# reinstalling the live-build package.
+LB_SYSLINUX_SCRIPT=/usr/lib/live/build/lb_binary_syslinux
+if grep -qF '(cd "$tmpdir" && cpio -i) < ${_TARGET}/bootlogo' "$LB_SYSLINUX_SCRIPT" \
+   && ! grep -qF 'if [ -e ${_TARGET}/bootlogo ]' "$LB_SYSLINUX_SCRIPT"; then
+  sudo sed -i 's|^(cd "$tmpdir" && cpio -i) < ${_TARGET}/bootlogo$|if [ -e ${_TARGET}/bootlogo ]; then (cd "$tmpdir" \&\& cpio -i) < ${_TARGET}/bootlogo; fi|' "$LB_SYSLINUX_SCRIPT"
+fi
+grep -qF 'if [ -e ${_TARGET}/bootlogo ]' "$LB_SYSLINUX_SCRIPT" \
+  || echo "WARNING: bootlogo guard not present in $LB_SYSLINUX_SCRIPT - the syslinux stage may fail at the gfxboot repack."
+
 echo "=== Building HAVEN ISO (this takes 30-60 minutes) ==="
 echo "Build started: $(date -u)"
 sudo lb build 2>&1 | tee "$HOME/iso-build.log"
