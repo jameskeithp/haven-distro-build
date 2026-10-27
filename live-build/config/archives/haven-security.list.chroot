@@ -1,0 +1,21 @@
+# HAVEN: build-time security repository for the CHROOT stage.
+#
+# Why this exists: the image's runtime security source
+# (config/includes.chroot/etc/apt/sources.list.d/haven-security.list)
+# is copied into the chroot as a plain file, but live-build stashes it
+# during the chroot stage, so the chroot itself installs without
+# security and gets kernel 6.1.0-50 (newest in bookworm). At the binary
+# stage live-build restores the file and runs a full upgrade +
+# dist-upgrade (lb_chroot_archives), which pulls in kernel 6.1.0-54
+# ALONGSIDE .50. lb_binary_linux-image then copies BOTH vmlinuz-*
+# files into binary/live, and lb_binary_syslinux's single-flavour
+# rename (mv binary/live/vmlinuz-* binary/live/vmlinuz) fails with
+# "mv: target 'binary/live/vmlinuz': No such file or directory",
+# killing the build (attempt 10, 2026-10-27).
+#
+# Adding the same repo as a chroot archive makes the chroot stage
+# install the security kernel directly, so the binary upgrade has no
+# second kernel to add and exactly one vmlinuz reaches binary/live.
+# live-build's own --security stays false: 3.0~a57 writes the dead
+# "bookworm/updates" suite name for it (see the includes file).
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
