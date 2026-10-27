@@ -70,5 +70,9 @@ nftables
 # They must be in the chroot so config/hooks/0200-haven-syslinux-compat
 # can stage them at the legacy paths that live-build 3.0~a57's isolinux
 # theme symlinks point to (see that hook for the full explanation).
+# librsvg2-bin provides rsvg-convert, which the same hook's
+# /usr/bin/rsvg shim wraps for lb_binary_syslinux's splash.svg
+# conversion (a57 calls the pre-bookworm 'rsvg' CLI bookworm dropped).
 isolinux
 syslinux-common
+librsvg2-bin

@@ -16,3 +16,41 @@ set -e
 # binary stage finds them. Idempotent: safe to run on every pass.
 cp /usr/lib/ISOLINUX/isolinux.bin /usr/lib/syslinux/isolinux.bin
 cp /usr/lib/syslinux/modules/bios/vesamenu.c32 /usr/lib/syslinux/vesamenu.c32
+
+# Same class of rot, one step later in the same stage (attempt 11,
+# 2026-10-27): lb_binary_syslinux converts the theme's splash.svg by
+# running Chroot chroot "rsvg --format png --height 480 --width 640
+# splash.svg splash.png", and its Check_package assumes librsvg2-bin
+# provides /usr/bin/rsvg. Bookworm's librsvg2-bin ships ONLY
+# /usr/bin/rsvg-convert (verified from the .deb), and rsvg-convert
+# rejects the legacy two-positional-argument call ("Multiple SVG files
+# are only allowed for PDF and (E)PS output" — the output name is read
+# as a second input). Stage an 'rsvg' shim that translates the call to
+# rsvg-convert's -o form. librsvg2-bin itself is in haven.list.chroot,
+# so rsvg-convert is present from the chroot stage on, and the shim's
+# presence at /usr/bin/rsvg satisfies the stage's Check_package.
+cat > /usr/bin/rsvg << 'HAVEN_RSVG_SHIM'
+#!/bin/sh
+# HAVEN shim: translate live-build's legacy rsvg call to rsvg-convert.
+opts=""
+pos=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --format|--height|--width)
+      opts="$opts $1 $2"; shift 2 ;;
+    -*)
+      opts="$opts $1"; shift ;;
+    *)
+      pos="$pos $1"; shift ;;
+  esac
+done
+# shellcheck disable=SC2086
+set -- $pos
+if [ $# -lt 2 ]; then
+  echo "rsvg shim: expected <input.svg> <output.png>" >&2
+  exit 1
+fi
+# shellcheck disable=SC2086
+exec rsvg-convert $opts -o "$2" "$1"
+HAVEN_RSVG_SHIM
+chmod 755 /usr/bin/rsvg
