@@ -63,3 +63,12 @@ jq
 python3-venv
 chrony
 nftables
+
+# --- Bootloader support files (build-time) ---
+# isolinux provides /usr/lib/ISOLINUX/isolinux.bin; syslinux-common
+# provides /usr/lib/syslinux/modules/bios/{vesamenu,ldlinux}.c32.
+# They must be in the chroot so config/hooks/0200-haven-syslinux-compat
+# can stage them at the legacy paths that live-build 3.0~a57's isolinux
+# theme symlinks point to (see that hook for the full explanation).
+isolinux
+syslinux-common

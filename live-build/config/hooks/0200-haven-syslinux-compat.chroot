@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+# HAVEN syslinux/bookworm compatibility staging.
+#
+# live-build 3.0~a57's bundled isolinux theme (share/bootloaders/isolinux)
+# ships absolute symlinks to the pre-bookworm syslinux layout:
+#   isolinux.bin  -> /usr/lib/syslinux/isolinux.bin
+#   vesamenu.c32  -> /usr/lib/syslinux/vesamenu.c32
+# lb_binary_syslinux dereferences those symlinks INSIDE this chroot
+# (Chroot chroot cp -aL /root/isolinux /root/isolinux.tmp). Bookworm moved
+# both files: isolinux.bin now lives in /usr/lib/ISOLINUX/ (package
+# isolinux) and vesamenu.c32 in /usr/lib/syslinux/modules/bios/ (package
+# syslinux-common), so the dereference fails with "cannot stat", set -e
+# aborts lb_binary_syslinux, and the build dies (attempt 9, 2026-10-27).
+# Stage copies at the legacy paths here, during the chroot stage, so the
+# binary stage finds them. Idempotent: safe to run on every pass.
+cp /usr/lib/ISOLINUX/isolinux.bin /usr/lib/syslinux/isolinux.bin
+cp /usr/lib/syslinux/modules/bios/vesamenu.c32 /usr/lib/syslinux/vesamenu.c32

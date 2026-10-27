@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+# HAVEN: syslinux 6 needs ldlinux.c32 next to isolinux.bin in /isolinux
+# on the ISO, or boot fails with "Failed to load ldlinux.c32".
+# live-build 3.0~a57's isolinux theme has no ldlinux.c32 entry, so
+# lb_binary_syslinux never copies one. Local binary hooks run after
+# lb_binary_syslinux (see the stage order in lb_binary), when
+# binary/isolinux already exists, so copy it here from the chroot
+# (package syslinux-common, staged in the chroot package list).
+cp chroot/usr/lib/syslinux/modules/bios/ldlinux.c32 binary/isolinux/ldlinux.c32
