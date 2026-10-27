@@ -1,0 +1,76 @@
+#!/bin/sh
+set -e
+# MOVED 2026-10-27 from config/hooks/live/ to config/hooks/: live-build
+# 3.0~a57's lb_chroot_hooks only runs config/hooks/*.chroot (flat); the
+# hooks/live/ layout is a newer live-build convention and a57 never reads
+# it, so this hook silently never ran in attempts 1-9. The copy left in
+# config/hooks/live/ is inert under 3.0 (snapshot pushes cannot delete).
+# HAVEN CIS-aligned hardening, applied at image build time.
+# Runs as root inside the target chroot during `lb build`.
+# Source: Phase 3, Step 4 of FLAGSHIP-LINUX-DISTRO-BUILD-GUIDE.md.
+# NOTE: untested on a full build as of 2026-10-17 (host disk too small to run lb build).
+
+# 1. Kernel hardening via sysctl (CIS 3.x network parameters)
+cat > /etc/sysctl.d/99-haven.conf <<'EOF'
+net.ipv4.ip_forward=0
+net.ipv4.conf.all.send_redirects=0
+net.ipv4.conf.default.send_redirects=0
+net.ipv4.conf.all.accept_source_route=0
+net.ipv4.conf.default.accept_source_route=0
+net.ipv4.conf.all.accept_redirects=0
+net.ipv4.conf.default.accept_redirects=0
+net.ipv4.conf.all.secure_redirects=0
+net.ipv4.conf.all.log_martians=1
+net.ipv4.icmp_echo_ignore_broadcasts=1
+net.ipv4.tcp_syncookies=1
+kernel.randomize_va_space=2
+kernel.kptr_restrict=2
+kernel.dmesg_restrict=1
+fs.suid_dumpable=0
+EOF
+
+# 2. Disable uncommon filesystems (CIS 1.1.x)
+for fs in cramfs freevxfs jffs2 hfs hfsplus squashfs udf; do
+  echo "install $fs /bin/true" >> /etc/modprobe.d/haven-cis.conf
+done
+
+# 3. SSH: no root login, no empty passwords (CIS 5.2.x)
+mkdir -p /etc/ssh/sshd_config.d
+printf 'PermitRootLogin no\nPermitEmptyPasswords no\nMaxAuthTries 4\nLoginGraceTime 60\n' \
+  > /etc/ssh/sshd_config.d/99-haven.conf
+
+# 4. Password quality and aging (CIS 5.3.x / 5.4.x)
+sed -i 's/^#*PASS_MAX_DAYS.*/PASS_MAX_DAYS   90/' /etc/login.defs
+sed -i 's/^#*PASS_MIN_DAYS.*/PASS_MIN_DAYS   7/' /etc/login.defs
+sed -i 's/^#*UMASK.*/UMASK           027/' /etc/login.defs
+
+# 5. Auditd: CIS-aligned rule baseline
+mkdir -p /etc/audit/rules.d
+cat > /etc/audit/rules.d/haven-cis.rules <<'EOF'
+-w /etc/passwd -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k privilege-escalation
+-w /etc/sudoers.d/ -p wa -k privilege-escalation
+-w /var/log/sudo.log -p wa -k privilege-escalation
+-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change
+-a always,exit -F arch=b64 -S creat -S open -S openat -F exit=-EACCES -k access
+-a always,exit -F arch=b64 -S creat -S open -S openat -F exit=-EPERM -k access
+-w /sbin/insmod -p x -k modules
+-w /sbin/rmmod -p x -k modules
+-w /sbin/modprobe -p x -k modules
+-e 2
+EOF
+
+# 6. Remove risky legacy packages commonly flagged by CIS
+apt-get purge -y --allow-remove-essential=false nis rsh-client rsh-redone-client talk telnet 2>/dev/null || true
+
+# 7. MOTD banner with authorized-use notice
+cat > /etc/motd <<'EOF'
+HAVEN Linux - authorized use only. All activity may be monitored.
+Run 'haven-healthcheck' to verify your environment. Run 'cis-scan' for a CIS self-assessment.
+EOF
+chmod 644 /etc/motd
+
+# 8. Enable the services the layers depend on (best effort inside chroot)
+systemctl enable suricata auditd clamav-freshclam 2>/dev/null || true
