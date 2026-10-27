@@ -76,3 +76,10 @@ nftables
 isolinux
 syslinux-common
 librsvg2-bin
+# syslinux-utils provides /usr/bin/isohybrid INSIDE the image. lb_binary_iso
+# generates binary.sh and runs it in the chroot (genisoimage writes the ISO
+# there, then isohybrid patches it); its Check_package names the package
+# "syslinux", but in bookworm that package ships only /usr/bin/syslinux —
+# isohybrid moved to syslinux-utils. Attempt 13 wrote the full ISO in the
+# chroot and died on "binary.sh: 5: isohybrid: not found".
+syslinux-utils

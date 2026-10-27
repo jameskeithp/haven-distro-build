@@ -14,10 +14,12 @@ chmod -x auto/config 2>/dev/null || true
 echo "=== Installing live-build dependencies ==="
 sudo apt-get update -qq
 sudo apt-get install -y -qq live-build git cdebootstrap debootstrap syslinux-utils > /dev/null
-# NOTE (2026-10-27): syslinux-utils provides the host-side isohybrid tool.
-# Attempt 13 wrote the full ISO (832128 extents, 1625 MB) and then died on
-# the final hybrid step: "binary.sh: 5: isohybrid: not found". The syslinux
-# package installed INTO the image does not put isohybrid on the host.
+# NOTE (2026-10-27): syslinux-utils on the HOST is kept for manual salvage
+# only (running isohybrid by hand on a written ISO). The build-time fix is
+# different: lb_binary_iso runs isohybrid INSIDE the chroot, so syslinux-utils
+# is also in config/package-lists/haven.list.chroot. Attempt 13 wrote the
+# full ISO (832128 extents, 1625 MB) inside the chroot and then died on the
+# final hybrid step: "binary.sh: 5: isohybrid: not found".
 
 echo "=== Cleaning any previous build ==="
 sudo lb clean --purge 2>/dev/null || true
