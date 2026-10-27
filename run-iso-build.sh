@@ -13,7 +13,11 @@ chmod -x auto/config 2>/dev/null || true
 
 echo "=== Installing live-build dependencies ==="
 sudo apt-get update -qq
-sudo apt-get install -y -qq live-build git cdebootstrap debootstrap > /dev/null
+sudo apt-get install -y -qq live-build git cdebootstrap debootstrap syslinux-utils > /dev/null
+# NOTE (2026-10-27): syslinux-utils provides the host-side isohybrid tool.
+# Attempt 13 wrote the full ISO (832128 extents, 1625 MB) and then died on
+# the final hybrid step: "binary.sh: 5: isohybrid: not found". The syslinux
+# package installed INTO the image does not put isohybrid on the host.
 
 echo "=== Cleaning any previous build ==="
 sudo lb clean --purge 2>/dev/null || true
